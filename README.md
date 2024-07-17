@@ -2,7 +2,7 @@
 Blueprints for Home Assistant
 
 
-## Aqara Smoke detectors
+## [Aqara Smoke detectors](https://github.com/vansummeren/HA_blueprints/tree/main/aqara-smoke-detectors)
 A blueprint to link Aqara Smoke detectors and define actions to be exectuted when smoke is detected or the alarm is muted.
 When the smoke detectors are linked, the alarm is turned on on all of them when triggered on any single one.
 
