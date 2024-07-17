@@ -43,13 +43,13 @@ blueprint:
     on_alarm:
       name: On Alarm
       default: []
-      description: Action to run when smoke is detected.
+      description: Actions to run when smoke is detected.
       selector:
         action: {}
     on_mute:
       name: On Mute
       default: []
-      description: Action to run when alarm is muted.
+      description: Actions to run when alarm is muted.
       selector:
         action: {}
 variables:
