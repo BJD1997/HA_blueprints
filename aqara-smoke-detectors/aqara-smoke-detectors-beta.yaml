@@ -14,7 +14,7 @@ blueprint:
       description: The smoke detectors you want to link.
       selector:
         device:
-          model: (JY-GZ-01AQ)
+          model: 'Smart smoke detector (JY-GZ-01AQ) by Aqara'
           multiple: true
     notify_device:
       name: Devices to notify
