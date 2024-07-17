@@ -14,7 +14,7 @@ blueprint:
       description: The smoke detectors you want to link.
       selector:
         device:
-          model: 'Smart smoke detector (JY-GZ-01AQ) by Aqara'
+          - manufacturer: Aqara
           multiple: true
     notify_device:
       name: Devices to notify
@@ -116,8 +116,7 @@ action:
                       for_each: "{{notify_devices}}"
                       sequence:
                         - service:
-                            notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify
-                            }}
+                            notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
                           data:
                             title: "{{ title | default('') }}"
                             message: "{{message}} {{area_name(sensor_trigger_entity)}}!"
@@ -166,8 +165,7 @@ action:
               for_each: "{{notify_devices}}"
               sequence:
                 - service:
-                    notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify
-                    }}
+                    notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
                   data:
                     title: "{{ title | default('') }}"
                     message: clear_notification
