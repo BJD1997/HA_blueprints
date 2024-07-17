@@ -1,6 +1,6 @@
 # Aqara Smoke Detectors
 
-[Aqara smoke detecotrs](https://www.aqara.com/en/product/smart-smoke-detector/) have the ability to alarm each other once one has detected fire.
+[Aqara smoke detectors](https://www.aqara.com/en/product/smart-smoke-detector/) have the ability to alarm each other once one has detected fire.
 Since this linkage as achieved through the aqara hub, Home Assistant now has to take care of that job.
 
 - Created for zigbee2mqtt
