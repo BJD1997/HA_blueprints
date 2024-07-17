@@ -1,0 +1,180 @@
+blueprint:
+  name: Link Aqara smoke detectors and execute action
+  description:
+    Aqara smoke detecotrs have the \"ability\" to alarm each other once
+    one has detected fire. Since this linkage as achieved through the aqara hub, Home
+    Assistant now has to take care of that job. Select the smoke detectors you want
+    to link. Also mutes all the smoke detectors when one is muted.
+    Optional actions can be selected to be executed when the alarm is raised or muted.
+  source_url: https://community.home-assistant.io/t/aqara-smoke-detector-linkage-alarm/517656
+  domain: automation
+  input:
+    smoke_detectors:
+      name: Smoke detectors
+      description: The smoke detectors you want to link.
+      selector:
+        device:
+          model: (JY-GZ-01AQ)
+          multiple: true
+    notify_device:
+      name: Devices to notify
+      description: Devices to be notified via the mobile app
+      selector:
+        device:
+          integration: mobile_app
+          multiple: true
+    message_title:
+      name: Message title
+      description: Title of the notification.
+      selector:
+        text: {}
+    message_button:
+      name: Button label
+      description: The label the action-button has to stop the alarm, e.g. Stop alarm.
+      selector:
+        text: {}
+    message_string:
+      name: Message
+      description: Message content prefixing the area name where smoke was detected.
+      selector:
+        text: {}
+    on_alarm:
+      name: On Alarm
+      description: Action to run when smoke is detected.
+      selector:
+        action: {}
+    on_mute:
+      name: On Mute
+      description: Action to run when alarm is muted.
+      selector:
+        action: {}
+variables:
+  notify_devices: !input notify_device
+  message: !input message_string
+  button_label: !input message_button
+  devices: !input smoke_detectors
+  buzzers:
+    "{% set data = namespace(buzzer=[]) %} {% set temp = [] %} {% for device
+    in devices %}\n  {% set temp = device_entities(device) | select('match', 'select.*_buzzer')
+    | list | join  %}\n  {%- set data.buzzer = data.buzzer + [temp] -%}\n{% endfor
+    %} {{ data.buzzer }}"
+  v_smoke_sensors:
+    "{% set data = namespace(alarm_entity=[]) %} {% set temp = [] %}
+    {% for device in devices %}\n  {% set temp = device_entities(device) | select('match',
+    'binary_sensor.*_smoke') | list | join  %}\n  {%- set data.alarm_entity = data.alarm_entity
+    + [temp] -%}\n{% endfor %} {{ data.alarm_entity }} "
+  sensor_trigger_entity:
+    "{% set data = namespace(alarm=false, trigger_id=\"0\") %}
+    {% for sensor in v_smoke_sensors %}\n  {% if is_state(sensor, \"on\")  %}\n    {%
+    set data.trigger_id = sensor %}\n    {% set data.alarm = true %}\n  {% endif %}\n{%
+    endfor %} {{ data.trigger_id }}"
+trigger_variables:
+  button_label: !input message_string
+  devices: !input smoke_detectors
+  smoke_sensors:
+    "{% set data = namespace(alarm_entity=[]) %} {% set temp = [] %}
+    {% for device in devices %}\n  {% set temp = device_entities(device) | select('match',
+    'binary_sensor.*_smoke') | list | join  %}\n  {%- set data.alarm_entity = data.alarm_entity
+    + [temp] -%}\n{% endfor %} {{ data.alarm_entity }} "
+  mute_sensors:
+    "{% set data = namespace(muted=[]) %} {% set temp = [] %} {% for device
+    in devices %}\n  {% set temp = device_entities(device) | select('match', 'binary_sensor.*_buzzer_manual_mute')
+    | list | join  %}\n  {%- set data.muted = data.muted + [temp] -%}\n{% endfor %}
+    {{ data.muted }}"
+trigger:
+  - platform: template
+    value_template:
+      "{% set data = namespace(alarm=false) %} {% for sensor in smoke_sensors
+      %}\n  {% if is_state(sensor, \"on\")  %}\n    {% set data.alarm = true %}\n  {%
+      endif %}\n{% endfor %} {{ data.alarm  }}"
+    id: alarm
+  - platform: template
+    value_template:
+      "{% set data = namespace(alarm_muted=false) %} {% for sensor in
+      mute_sensors %}\n  {% if is_state(sensor, \"on\")  %}\n    {% set data.alarm_muted
+      = true %}\n  {% endif %}\n{% endfor %} {{ data.alarm_muted  }}"
+    id: mute
+condition:
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{trigger.id == 'alarm'}}"
+        sequence:
+          - service: select.select_option
+            target:
+              entity_id: "{{buzzers}}"
+            data:
+              option: alarm
+          - parallel:
+              - sequence:
+                  - alias: Setup notification variables
+                    variables:
+                      action_stop: "{{ 'STOP_' ~ context.id }}"
+                  - alias: Repeat notify for each device
+                    repeat:
+                      for_each: "{{notify_devices}}"
+                      sequence:
+                        - service:
+                            notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify
+                            }}
+                          data:
+                            title: "{{ title | default('') }}"
+                            message: "{{message}} {{area_name(sensor_trigger_entity)}}!"
+                            data:
+                              tag: fire
+                              sticky: true
+                              persistent: true
+                              actions:
+                                - action: "{{ action_stop }}"
+                                  title: "{{ button_label }}"
+                  - alias: Execute optional alarm action
+                    choose: []
+                    default: !input on_alarm
+                  - wait_for_trigger:
+                      - platform: event
+                        event_type: mobile_app_notification_action
+                        event_data:
+                          action: "{{ action_stop }}"
+                  - service: select.select_option
+                    target:
+                      entity_id: "{{buzzers}}"
+                    data:
+                      option: mute
+              - sequence:
+                  - wait_template:
+                      "{% set data = namespace(alarm_finished=true) %} {% for sensor
+                      in v_smoke_sensors %}\n  {% if is_state(sensor, \"on\")  %}\n    {% set
+                      data.alarm_finished = false %}\n  {% endif %}\n{% endfor %} {{ data.alarm_finished
+                      }}"
+                  - service: select.select_option
+                    target:
+                      entity_id: "{{buzzers}}"
+                    data:
+                      option: mute
+      - conditions:
+          - condition: template
+            value_template: "{{trigger.id == 'mute'}}"
+        sequence:
+          - service: select.select_option
+            target:
+              entity_id: "{{buzzers}}"
+            data:
+              option: mute
+          - alias: Repeat notify for each device
+            repeat:
+              for_each: "{{notify_devices}}"
+              sequence:
+                - service:
+                    notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify
+                    }}
+                  data:
+                    title: "{{ title | default('') }}"
+                    message: clear_notification
+                    data:
+                      tag: fire
+          - alias: Execute optional mute action
+            choose: []
+            default: !input on_mute
+mode: restart
+max_exceeded: silent
