@@ -14,7 +14,8 @@ blueprint:
       description: The smoke detectors you want to link.
       selector:
         device:
-          manufacturer: Aqara
+          filter:
+            - manufacturer: Aqara
           multiple: true
     notify_device:
       name: Devices to notify
