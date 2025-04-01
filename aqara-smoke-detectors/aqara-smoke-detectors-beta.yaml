@@ -15,8 +15,8 @@ blueprint:
       selector:
         device:
           filter:
-            - manufacturer: Aqara
-              model: Smart smoke detector (JY-GZ-01AQ)
+            - manufacturer: LUMI
+              model: lumi.sensor_smoke.acn03
           multiple: true
     notify_device:
       name: Devices to notify
